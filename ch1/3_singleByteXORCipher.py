@@ -1,9 +1,16 @@
 import binascii
 import codecs
 
+from math import sqrt
+
+# GLOBAL VARIABLES ====
+
 test_vector = '1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736'
 test_characters = 'abcdefghijklmnopqrstuvwxyz'
 english_character_frequencies = {'E':0.1202,'T':0.091,'A':0.0812,'O':0.0768,'I':0.0731,'N':0.0695,'S':0.0628,'R':0.0602,'H':0.0592,'D':0.0432,'L':0.0398,'U':0.0288,'C':0.0271,'M':0.0261,'F':0.023,'Y':0.0211,'W':0.0209,'G':0.0203,'P':0.0182,'B':0.0149,'V':0.0111,'K':0.0069,'X':0.0017,'Q':0.0011,'J':0.001,'Z':0.0007}
+alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+# FUNCTION DEFINITIONS ====
 
 def fixedXOR(p, q):
 	'''
@@ -72,7 +79,7 @@ def tryDictXOR(d,vector):
 		res.append(getSingleCharacterXOR(v, vector))
 	return res
 
-def singleCharCipher():
+def singleCharCipher(test_vector):
 	'''
 	Get a dict. Try dict across vector. 
 
@@ -111,13 +118,13 @@ def getSumDictValues(dictList):
 
 def stripNullBytes(inputList):
 	res = []
+
 	for s in inputList:
+
 		x = s
-		print(x)
 		res.append(x)
 
 	return res
-
 
 def getFrequencies(dictionaryList, sumList):
 
@@ -148,36 +155,73 @@ def getEuclidianDistance(v1,v2):
 
 	tmpAdd = 0
 	for i in range(len(v1)):
-		tmpSub = ((v1-v2)**2)
+		tmpSub = ((v1[i]-v2[i])**2)
 		tmpAdd += tmpSub
 
 	return sqrt(tmpAdd)
 
 def getDistanceList(myFreq, englishFreq):
+	'''
+	myFreq is a list of 26 dictionaries (one for each character attempted) containing the frequencies for those 
+	'''
 
-	return
+	distList = []
+	#for each dictionary in list of dicts
+	for d in myFreq:
+		tmp = []
+		#turn it into a list of frequencies organized in alphabetical order
+		for char in alphabet:
+			charFreq = d.get(char,0)
+			tmp.append(charFreq)
+		distList.append(tmp)
 
-#get a list of ascii strings that represent CHAR XOR vector
-resultsList = singleCharCipher()
+	englishList = []
+	for char in alphabet:
+		englishList.append(englishFreq.get(char,0))
 
-cleanResultsList = stripNullBytes(resultsList)
+	eucDistances = []
+	for sublist in distList:
+		eucDistances.append(getEuclidianDistance(sublist,englishList))
 
-#get a list of dictionaries with the letter counts in each of the above strings
-countsDictionaryList = getCounts(cleanResultsList)
+	return eucDistances
 
-#get a list of ints that represent the lengths of the above strings
-sumDictValuesList = getSumDictValues(countsDictionaryList)
+def getSortedIndicesList(distList):
+	sortingList = []
+	for i,x in enumerate(distList):
+		sortingList.append((i,x))
 
-#get a list of character frequencies for each of the above strings
-frequencyList = getFrequencies(countsDictionaryList, sumDictValuesList)
+	sortingList.sort(key=lambda tup: tup[1])
+	
+	return sortingList
 
-distanceList = getDistanceList(frequencyList, english_character_frequencies)
+def alphabetCharXORstring(testVector, topResults):
+	'''
+	str: testVector is a string (ascii) over which all (26) possible english characters will be XOR'd. 
+	The resulting plaintext will be ranked with respect to its character frequency's euclidean distance from expected frequency values for the english language.
+	int: topResults determines how many (the top n) results will be output.
+	'''
 
-print(resultsList[23])
-print(frequencyList[23])
+	#get a list of ascii strings that represent CHAR XOR vector
+	resultsList = singleCharCipher(test_vector)
 
+	cleanResultsList = stripNullBytes(resultsList)
 
-print(english_character_frequencies)
+	#get a list of dictionaries with the letter counts in each of the above strings
+	countsDictionaryList = getCounts(cleanResultsList)
 
+	#get a list of ints that represent the lengths of the above strings
+	sumDictValuesList = getSumDictValues(countsDictionaryList)
 
+	#get a list of character frequencies for each of the above strings
+	frequencyList = getFrequencies(countsDictionaryList, sumDictValuesList)
 
+	distanceList = getDistanceList(frequencyList, english_character_frequencies)
+
+	indicesList = getSortedIndicesList(distanceList)
+
+	likelyEnglishList = []
+	for i in range(topResults):
+		likelyEnglishList.append(   (   str(cleanResultsList[indicesList[i][0]]),  alphabet[indicesList[i][0]]   )  )
+	return likelyEnglishList
+
+print(alphabetCharXORstring(test_vector,3))
